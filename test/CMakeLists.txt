@@ -1,8 +1,12 @@
 find_package(doctest 2.3.3 REQUIRED)
 
 add_executable(textum-unit-tests test_main.cpp)
+target_sources(textum-unit-tests PRIVATE
+    textum/fsm.cpp
+)
 target_link_libraries(textum-unit-tests
     PRIVATE
+        Textum::textum
         doctest::doctest
 )
 

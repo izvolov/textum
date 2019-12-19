@@ -21,7 +21,7 @@ namespace textum
             Тим символов, которыми подписаны дуги переходов.
         \tparam TransitionMap
             Тип таблицы переходов. У каждого состояния свой экземпляр таблицы переходов.
-     */
+    */
     template
     <
         typename Symbol = char,
@@ -41,7 +41,7 @@ namespace textum
 
             \post
                 Размер автомата равен единице.
-         */
+        */
         fsm ():
             m_transitions{transition_map_type{}}
         {
@@ -55,7 +55,7 @@ namespace textum
                 Выполняется следующее условие:
 
                     `a.is_root(a.root()) == true`
-         */
+        */
         state_index_type root () const
         {
             return 0;
@@ -69,7 +69,7 @@ namespace textum
                 Выполняется следующее условие:
 
                     `a.is_root(a.root()) == true`
-         */
+        */
         bool is_root (state_index_type state) const
         {
             return state == root();
@@ -92,7 +92,7 @@ namespace textum
                 был ли найден требуемый переход, а `destination` — состояние, в которое привёл
                 переход в том случае, если он был найден, либо `source` в случае, если переход не
                 был найден (иначе говоря, если переход не найден, то остаёмся на месте).
-         */
+        */
         template <typename S, typename =
             std::enable_if_t<std::is_convertible_v<S, symbol_type>>>
         auto next (state_index_type source, S && symbol) const
@@ -132,7 +132,7 @@ namespace textum
                 `source` по символу `symbol` в автомате уже существует, поэтому новые состояния и
                 переходы построены не будет, а возвращено будет то состояние, куда вёл уже
                 существующий переход.
-         */
+        */
         template <typename S, typename =
             std::enable_if_t<std::is_convertible_v<S, symbol_type>>>
         auto add_transition (state_index_type source, S && symbol)
@@ -161,7 +161,7 @@ namespace textum
                 `(source, symbol_i, destination_i)` будет применена трёхместная функция `visit`,
                 где `symbol_i` и `destination_i` — символы, по которым есть переход из состояния
                 `source`, а `destination_i` — состояние, в которое привёт соответствующий символ.
-         */
+        */
         template <typename TernaryFunction>
         void visit_transitions (state_index_type source, TernaryFunction && visit) const
         {
@@ -180,7 +180,7 @@ namespace textum
 
             \details
                 Размер автомата — это количество состояний этого автомата.
-         */
+        */
         auto size () const
         {
             return m_transitions.size();

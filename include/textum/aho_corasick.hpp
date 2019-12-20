@@ -768,7 +768,7 @@ namespace textum
                 RandomAccessIterator pattern
             ) const
         {
-            destination_row[0] = source_row[0] + p.insertion_penalty(symbol);
+            destination_row[0] = source_row[0] + p.deletion_or_insertion_penalty(symbol);
             for (auto i = 1ul; i < destination_row.size(); ++i)
             {
                 using difference_type = iterator_difference_t<RandomAccessIterator>;
@@ -776,8 +776,8 @@ namespace textum
                 destination_row[i] =
                     std::min
                     ({
-                        destination_row[i - 1] + p.deletion_penalty(value),
-                        source_row[i] + p.insertion_penalty(symbol),
+                        destination_row[i - 1] + p.deletion_or_insertion_penalty(value),
+                        source_row[i] + p.deletion_or_insertion_penalty(symbol),
                         source_row[i - 1] + p.replacement_penalty(value, symbol)
                     });
             }

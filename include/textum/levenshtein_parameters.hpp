@@ -43,8 +43,7 @@ namespace textum
     template
     <
         typename Arithmetic,
-        typename UnaryFunction1 = always_one_t<Arithmetic>,
-        typename UnaryFunction2 = always_one_t<Arithmetic>,
+        typename UnaryFunction = always_one_t<Arithmetic>,
         typename BinaryFunction = inversed_indicator_t<Arithmetic>
     >
     struct levenshtein_parameters_t
@@ -56,15 +55,15 @@ namespace textum
         */
         Arithmetic distance_limit = infinity<Arithmetic>;
         /*!
-            Цена удаления символа из последовательности.
+            Цена удаления и вставки символа.
+            Удаление и вставка — это одно и то же в силу симметричности расстояния (удаление из
+            первой последовательности эквивалентно вставке во вторую, и наоборот).
         */
-        UnaryFunction1 deletion_penalty = always_one<Arithmetic>;
-        /*!
-            Цена вставки символа в последовательность.
-        */
-        UnaryFunction2 insertion_penalty = always_one<Arithmetic>;
+        UnaryFunction deletion_or_insertion_penalty = always_one<Arithmetic>;
         /*!
             Цена замены одного символа на другой.
+            Эта функция обрабатывает и ситуацию, когда взвешивается замена символа на самого себя.
+            Цена замены символа на равный ему символ по умолчанию равна нулю.
         */
         BinaryFunction replacement_penalty = inversed_indicator<Arithmetic>;
     };

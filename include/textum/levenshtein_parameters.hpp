@@ -89,4 +89,17 @@ namespace textum
     {
         return {d};
     }
+
+    template <typename Arithmetic, typename UnaryFunction, typename BinaryFunction>
+    auto
+        levenshtein
+        (
+            Arithmetic distance,
+            UnaryFunction deletion_or_insertion,
+            BinaryFunction replacement
+        )
+        -> levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction>
+    {
+        return {distance, std::move(deletion_or_insertion), std::move(replacement)};
+    }
 } // namespace textum

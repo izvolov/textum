@@ -313,6 +313,67 @@ TEST_CASE("Максимальное редакционное расстояни�
     CHECK(matched_values == expected_values);
 }
 
+TEST_CASE("Если цена замены нулевая, то, сколько бы ни стоили вставка и удаление, расстояние "
+    "между строками одинаковой длины будет равно нулю")
+{
+    const auto values =
+        std::vector<std::pair<std::string, long>>
+        {
+            {"asdfg", 1},
+            {"zxcvb", 2},
+            {"qwerty", 3},
+        };
+    const auto a = textum::aho_corasick<char, long>(values);
+
+    std::vector<std::pair<long, double>> matched_values;
+    auto search_parameters =
+        textum::levenshtein
+        (
+            1,
+            [] (auto) {return 100500;}, // Вставка и удаление очень дорогие.
+            [] (auto, auto) {return 0;} // Замена ничего не стоит.
+        );
+    a.find_levenshtein(search_parameters, std::string("qwert"), std::back_inserter(matched_values));
+    std::sort(matched_values.begin(), matched_values.end());
+
+    const auto expected_values =
+        std::vector<std::pair<long, double>>
+        {
+            {1, 0}, // asdfg
+            {2, 0}, // zxcvb
+        };
+    CHECK(matched_values == expected_values);
+}
+
+TEST_CASE("Если замена слишком дорога, то минимальное расстояние достигается за счёт "
+    "удалений и вставок")
+{
+    const auto values =
+        std::vector<std::pair<std::string, long>>
+        {
+            {"asdfg", 1},
+        };
+    const auto a = textum::aho_corasick<char, long>(values);
+
+    std::vector<std::pair<long, double>> matched_values;
+    auto search_parameters =
+        textum::levenshtein
+        (
+            100500,
+            [] (auto) {return 10;}, // Вставка и удаление дешёвые.
+            [] (auto x, auto y) {return x == y ? 0 : 100500;} // Замена очень дорогая.
+        );
+    a.find_levenshtein(search_parameters, std::string("123456"), std::back_inserter(matched_values));
+    std::sort(matched_values.begin(), matched_values.end());
+
+    const auto expected_values =
+        std::vector<std::pair<long, double>>
+        {
+            {1, 10 * 5 + 10 * 6}, // Пять удалений, шесть вставок.
+        };
+    CHECK(matched_values == expected_values);
+}
+
 TEST_CASE("Префиксный поиск находит все принимаемые автоматом последовательности, до которых можно "
     "дойти из вершины, в которую привёл префикс")
 {

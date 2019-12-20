@@ -269,6 +269,8 @@ namespace textum
         template
         <
             typename Arithmetic,
+            typename UnaryFunction,
+            typename BinaryFunction,
             typename RandomAccessIterator,
             typename Sentinel,
             typename OutputIterator,
@@ -280,7 +282,7 @@ namespace textum
         auto
             find_levenshtein
             (
-                levenshtein_parameters_t<Arithmetic> p,
+                levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
                 RandomAccessIterator first,
                 Sentinel last,
                 OutputIterator result
@@ -290,8 +292,8 @@ namespace textum
             using distance_type = Arithmetic;
             using std::distance;
             auto initial_row =
-                std::vector<distance_type>(static_cast<std::size_t>(distance(first, last) + 1));
-            std::iota(initial_row.begin(), initial_row.end(), 0);
+                std::vector<distance_type>(static_cast<std::size_t>(distance(first, last) + 1), 0);
+            fill_initial_levenshtein_row(p, initial_row, first);
 
             auto stack = std::stack<std::pair<state_index_type, std::vector<distance_type>>>{};
             stack.emplace(m_aho_corasick_automaton.root(), std::move(initial_row));
@@ -321,7 +323,6 @@ namespace textum
                                 stack.emplace(destination, std::move(destination_row));
                             });
                 }
-
             }
 
             return result;
@@ -398,11 +399,18 @@ namespace textum
             \see find_levenshtein
             \see levenshtein_parameters_t
         */
-        template <typename Arithmetic, typename InputRange, typename OutputIterator>
+        template
+        <
+            typename Arithmetic,
+            typename UnaryFunction,
+            typename BinaryFunction,
+            typename InputRange,
+            typename OutputIterator
+        >
         auto
             find_levenshtein
             (
-                levenshtein_parameters_t<Arithmetic> p,
+                levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
                 InputRange && sequence,
                 OutputIterator result
             ) const
@@ -725,6 +733,70 @@ namespace textum
 
         /*!
             \brief
+                Заполнение начальной строки таблицы по алгоритму Вагнера-Фишера
+
+            \param p
+                Параметры нечёткого поиска.
+            \param initial_row
+                Диапазон, в который будет записана начальная строка таблицы.
+            \param pattern
+                Итератор на начало входной последовательности.
+
+            \see levenshtein_parameters_t
+            \see find_levenshtein
+        */
+        template
+        <
+            typename Arithmetic,
+            typename UnaryFunction,
+            typename BinaryFunction,
+            typename RandomAccessRange,
+            typename RandomAccessIterator
+        >
+        auto
+            fill_initial_levenshtein_row
+            (
+                levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
+                RandomAccessRange & initial_row,
+                RandomAccessIterator pattern
+            ) const
+        {
+            initial_row[0] = Arithmetic{0};
+            for (auto i = 1ul; i < initial_row.size(); ++i)
+            {
+                using difference_type = iterator_difference_t<RandomAccessIterator>;
+                const auto & value = pattern[static_cast<difference_type>(i) - 1];
+                initial_row[i] = initial_row[i - 1] + p.deletion_or_insertion_penalty(value);
+            }
+        }
+
+        /*!
+            \brief
+                Заполнение начальной строки таблицы по алгоритму Вагнера-Фишера со стандартными
+                параметрами
+
+            \details
+                При стандартных единичных весах удаления и вставки это всё эквивалентно банальной
+                йоте.
+
+            \see fill_initial_levenshtein_row
+            \see levenshtein_parameters_t
+            \see find_levenshtein
+        */
+        template <typename Arithmetic, typename RandomAccessRange, typename RandomAccessIterator>
+        auto
+            fill_initial_levenshtein_row
+            (
+                levenshtein_parameters_t<Arithmetic> /*p*/,
+                RandomAccessRange & initial_row,
+                RandomAccessIterator /*pattern*/
+            ) const
+        {
+            std::iota(initial_row.begin(), initial_row.end(), 0);
+        }
+
+        /*!
+            \brief
                 Заполнение одной строки таблицы по алгоритму Вагнера-Фишера
 
             \details
@@ -753,7 +825,7 @@ namespace textum
         */
         template
         <
-            typename Arithmetic,
+            typename LevenshteinParameters,
             typename RandomAccessRange1,
             typename RandomAccessRange2,
             typename RandomAccessIterator
@@ -761,7 +833,7 @@ namespace textum
         auto
             fill_levenshtein_row
             (
-                levenshtein_parameters_t<Arithmetic> p,
+                LevenshteinParameters p,
                 const RandomAccessRange1 & source_row,
                 RandomAccessRange2 & destination_row,
                 const Symbol & symbol,

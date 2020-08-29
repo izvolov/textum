@@ -530,6 +530,7 @@ namespace textum
                 auto [next_state, success] = next(state, *first);
                 state = std::move(next_state);
                 assert(success);
+                static_cast<void>(success);
 
                 result = collect_values(state, result);
                 ++first;
@@ -643,6 +644,7 @@ namespace textum
                     {
                         auto [sl, success] = next(m_attributes.at(source).suffix_link, symbol);
                         assert(success);
+                        static_cast<void>(success);
 
                         auto & destination_attributes = m_attributes.at(destination);
                         const auto & suffix_link_attributes = m_attributes.at(sl);

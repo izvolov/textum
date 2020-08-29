@@ -55,14 +55,15 @@ endif()
 ##
 ###################################################################################################
 
-add_library(textum INTERFACE)
-target_include_directories(textum INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_compile_features(textum INTERFACE cxx_std_17)
+add_library(textum_headers INTERFACE)
+ target_include_directories(textum_headers INTERFACE
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+     $<INSTALL_INTERFACE:include>
+ )
+ target_compile_features(textum_headers INTERFACE cxx_std_17)
+ set_target_properties(textum_headers PROPERTIES EXPORT_NAME textum)
 
-add_library(Textum::textum ALIAS textum)
+ add_library(Textum::textum ALIAS textum_headers)
 
 ###################################################################################################
 ##
@@ -72,7 +73,7 @@ add_library(Textum::textum ALIAS textum)
 
 install(DIRECTORY include/textum DESTINATION include)
 
-install(TARGETS textum EXPORT TextumConfig)
+install(TARGETS textum_headers EXPORT TextumConfig)
 install(EXPORT TextumConfig NAMESPACE Textum:: DESTINATION share/Textum/cmake)
 
 include(CMakePackageConfigHelpers)

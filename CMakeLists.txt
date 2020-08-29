@@ -15,8 +15,25 @@ get_directory_property(IS_SUBPROJECT PARENT_DIRECTORY)
 ##
 ###################################################################################################
 
-option(TEXTUM_TESTING "Включить модульное тестирование" ON)
-option(TEXTUM_COVERAGE "Включить измерение покрытия кода тестами" OFF)
+if (IS_SUBPROJECT AND NOT DEFINED TEXTUM_TESTING)
+     message(STATUS "Textum не тестируется в режиме подмодуля")
+     set(TEXTUM_TESTING OFF)
+ endif()
+
+ if (IS_SUBPROJECT AND NOT DEFINED TEXTUM_DOC)
+     message(STATUS "Автодокументация для Textum выключена в режиме подмодуля")
+     set(TEXTUM_DOC OFF)
+ endif()
+
+ if (IS_SUBPROJECT AND NOT DEFINED TEXTUM_WANDBOX)
+     message(STATUS "Онлайн-песочница для Textum выключена в режиме подмодуля")
+     set(TEXTUM_WANDBOX OFF)
+ endif()
+
+ option(TEXTUM_TESTING "Включить модульное тестирование" ON)
+ option(TEXTUM_COVERAGE "Включить измерение покрытия кода тестами" OFF)
+ option(TEXTUM_DOC "Включить документирование" ON)
+ option(TEXTUM_WANDBOX "Включить онлайн-песочницу" ON)
 
 ###################################################################################################
 ##
@@ -93,8 +110,6 @@ install(FILES "${PROJECT_BINARY_DIR}/TextumConfigVersion.cmake" DESTINATION shar
 
 if(NOT TEXTUM_TESTING)
     message(STATUS "Тестирование проекта Textum выключено")
-elseif(IS_SUBPROJECT)
-    message(STATUS "Textum не тестируется в режиме подмодуля")
 else()
     add_subdirectory(test)
 endif()
@@ -105,7 +120,9 @@ endif()
 ##
 ###################################################################################################
 
-if(NOT IS_SUBPROJECT)
+if(NOT TEXTUM_DOC)
+    message(STATUS "Автодокументация проекта Textum выключена")
+else()
     add_subdirectory(doc)
 endif()
 
@@ -115,6 +132,8 @@ endif()
 ##
 ###################################################################################################
 
-if(NOT IS_SUBPROJECT)
+if(NOT TEXTUM_WANDBOX)
+    message(STATUS "Онлайн-песочница для проекта Textum выключена")
+else()
     add_subdirectory(online)
 endif()

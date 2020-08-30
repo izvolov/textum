@@ -95,12 +95,12 @@ namespace textum
         */
         template <typename S, typename =
             std::enable_if_t<std::is_convertible_v<S, symbol_type>>>
-        auto next (state_index_type source, S && symbol) const
+        auto next (state_index_type source, const S & symbol) const
             -> std::pair<state_index_type, bool>
         {
             assert(source < m_transitions.size());
 
-            const auto destination = m_transitions[source].find(std::forward<S>(symbol));
+            const auto destination = m_transitions[source].find(symbol);
             if (destination != m_transitions[source].end())
             {
                 return std::pair(destination->second, true);

@@ -223,16 +223,11 @@ namespace textum
         */
         template <typename InputRange, typename =
             std::enable_if_t<std::is_convertible_v<range_value_t<InputRange>, symbol_type>>>
-        auto find (InputRange && sequence) const
+        auto find (const InputRange & sequence) const
         {
             using std::begin;
             using std::end;
-            return
-                find
-                (
-                    begin(std::forward<InputRange>(sequence)),
-                    end(std::forward<InputRange>(sequence))
-                );
+            return find(begin(sequence), end(sequence));
         }
 
         /*!
@@ -350,20 +345,13 @@ namespace textum
             find
             (
                 levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
-                InputRange && sequence,
+                const InputRange & sequence,
                 OutputIterator result
             ) const
         {
             using std::begin;
             using std::end;
-            return
-                find
-                (
-                    std::move(p),
-                    begin(std::forward<InputRange>(sequence)),
-                    end(std::forward<InputRange>(sequence)),
-                    result
-                );
+            return find(std::move(p), begin(sequence), end(sequence), result);
         }
 
         /*!
@@ -414,17 +402,11 @@ namespace textum
             \see default_levenshtein
         */
         template <typename InputRange, typename OutputIterator>
-        auto find_levenshtein (InputRange && sequence, OutputIterator result) const
+        auto find_levenshtein (const InputRange & sequence, OutputIterator result) const
         {
             using std::begin;
             using std::end;
-            return
-                find_levenshtein
-                (
-                    begin(std::forward<InputRange>(sequence)),
-                    end(std::forward<InputRange>(sequence)),
-                    result
-                );
+            return find_levenshtein(begin(sequence), end(sequence), result);
         }
 
         /*!
@@ -475,17 +457,11 @@ namespace textum
             \see find_prefix
         */
         template <typename InputRange, typename OutputIterator>
-        auto find_prefix (InputRange && sequence, OutputIterator result) const
+        auto find_prefix (const InputRange & sequence, OutputIterator result) const
         {
             using std::begin;
             using std::end;
-            return
-                find_prefix
-                (
-                    begin(std::forward<InputRange>(sequence)),
-                    end(std::forward<InputRange>(sequence)),
-                    result
-                );
+            return find_prefix(begin(sequence), end(sequence), result);
         }
 
         /*!
@@ -543,17 +519,11 @@ namespace textum
             \see match
         */
         template <typename InputRange, typename OutputIterator>
-        OutputIterator match (InputRange && sequence, OutputIterator result) const
+        OutputIterator match (const InputRange & sequence, OutputIterator result) const
         {
             using std::begin;
             using std::end;
-            return
-                match
-                (
-                    begin(std::forward<InputRange>(sequence)),
-                    end(std::forward<InputRange>(sequence)),
-                    result
-                );
+            return match(begin(sequence), end(sequence), result);
         }
 
     private:
@@ -932,17 +902,11 @@ namespace textum
         */
         template <typename ForwardRange, typename =
             std::enable_if_t<not std::is_convertible_v<ForwardRange, symbol_type>>>
-        auto traverse (state_index_type source, ForwardRange && sequence) const
+        auto traverse (state_index_type source, const ForwardRange & sequence) const
         {
             using std::begin;
             using std::end;
-            return
-                traverse
-                (
-                    source,
-                    begin(std::forward<ForwardRange>(sequence)),
-                    end(std::forward<ForwardRange>(sequence))
-                );
+            return traverse(source, begin(sequence), end(sequence));
         }
 
         /*!
@@ -1175,7 +1139,7 @@ namespace textum
         */
         template <typename S, typename =
             std::enable_if_t<std::is_convertible_v<S, symbol_type>>>
-        auto next (state_index_type source, S && symbol) const
+        auto next (state_index_type source, const S & symbol) const
             -> std::pair<state_index_type, bool>
         {
             while (not m_aho_corasick_automaton.is_root(source))

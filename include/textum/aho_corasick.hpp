@@ -937,7 +937,8 @@ namespace textum
                 auto symbol = *first;
                 assert(m_aho_corasick_automaton.next(state, symbol) == std::pair(state, false));
 
-                auto [next_state, success] = m_aho_corasick_automaton.add_transition(state, symbol);
+                auto [next_state, success] =
+                    m_aho_corasick_automaton.add_transition(state, std::move(symbol));
                 assert(success);
                 static_cast<void>(success);
                 state = std::move(next_state);

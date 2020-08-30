@@ -330,6 +330,44 @@ namespace textum
 
         /*!
             \brief
+                Нечёткий поиск по расстоянию Левенштейна с пользовательскими параметрами
+
+            \returns
+                `find_levenshtein(p, begin(sequence), end(sequence), result)`
+
+            \see find_levenshtein
+            \see levenshtein_parameters_t
+        */
+        template
+        <
+            typename Arithmetic,
+            typename UnaryFunction,
+            typename BinaryFunction,
+            typename InputRange,
+            typename OutputIterator
+        >
+        auto
+            find_levenshtein
+            (
+                levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
+                InputRange && sequence,
+                OutputIterator result
+            ) const
+        {
+            using std::begin;
+            using std::end;
+            return
+                find_levenshtein
+                (
+                    std::move(p),
+                    begin(std::forward<InputRange>(sequence)),
+                    end(std::forward<InputRange>(sequence)),
+                    result
+                );
+        }
+
+        /*!
+            \brief
                 Нечёткий поиск по расстоянию Левенштейна с параметрами по умолчанию
 
             \details
@@ -383,44 +421,6 @@ namespace textum
             return
                 find_levenshtein
                 (
-                    begin(std::forward<InputRange>(sequence)),
-                    end(std::forward<InputRange>(sequence)),
-                    result
-                );
-        }
-
-        /*!
-            \brief
-                Нечёткий поиск по расстоянию Левенштейна с пользовательскими параметрами
-
-            \returns
-                `find_levenshtein(p, begin(sequence), end(sequence), result)`
-
-            \see find_levenshtein
-            \see levenshtein_parameters_t
-        */
-        template
-        <
-            typename Arithmetic,
-            typename UnaryFunction,
-            typename BinaryFunction,
-            typename InputRange,
-            typename OutputIterator
-        >
-        auto
-            find_levenshtein
-            (
-                levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
-                InputRange && sequence,
-                OutputIterator result
-            ) const
-        {
-            using std::begin;
-            using std::end;
-            return
-                find_levenshtein
-                (
-                    std::move(p),
                     begin(std::forward<InputRange>(sequence)),
                     end(std::forward<InputRange>(sequence)),
                     result

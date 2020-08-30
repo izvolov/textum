@@ -280,7 +280,7 @@ namespace textum
                     std::is_convertible_v<iterator_value_t<RandomAccessIterator>, symbol_type>
                 >>
         auto
-            find_levenshtein
+            find
             (
                 levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
                 RandomAccessIterator first,
@@ -347,7 +347,7 @@ namespace textum
             typename OutputIterator
         >
         auto
-            find_levenshtein
+            find
             (
                 levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
                 InputRange && sequence,
@@ -357,7 +357,7 @@ namespace textum
             using std::begin;
             using std::end;
             return
-                find_levenshtein
+                find
                 (
                     std::move(p),
                     begin(std::forward<InputRange>(sequence)),
@@ -400,7 +400,7 @@ namespace textum
             -> OutputIterator
         {
             using difference_type = iterator_difference_t<RandomAccessIterator>;
-            return find_levenshtein(default_levenshtein<difference_type>, first, last, result);
+            return find(default_levenshtein<difference_type>, first, last, result);
         }
 
         /*!

@@ -280,7 +280,7 @@ TEST_CASE("Поиск по редакционному расстоянию мо�
     const auto a = textum::aho_corasick<char, long>(values);
 
     std::vector<std::pair<long, std::string::difference_type>> matched_values;
-    a.find_levenshtein(textum::levenshtein(1), std::string("bcd"), std::back_inserter(matched_values));
+    a.find(textum::levenshtein(1), std::string("bcd"), std::back_inserter(matched_values));
     std::sort(matched_values.begin(), matched_values.end());
 
     const auto expected_values =
@@ -302,7 +302,7 @@ TEST_CASE("Максимальное редакционное расстояни�
     const auto a = textum::aho_corasick<char, long>(values);
 
     std::vector<std::pair<long, double>> matched_values;
-    a.find_levenshtein(textum::levenshtein(2.5), std::string("bd"), std::back_inserter(matched_values));
+    a.find(textum::levenshtein(2.5), std::string("bd"), std::back_inserter(matched_values));
     std::sort(matched_values.begin(), matched_values.end());
 
     const auto expected_values =
@@ -333,7 +333,7 @@ TEST_CASE("Если цена замены нулевая, то, сколько �
             [] (auto) {return 100500;}, // Вставка и удаление очень дорогие.
             [] (auto, auto) {return 0;} // Замена ничего не стоит.
         );
-    a.find_levenshtein(search_parameters, std::string("qwert"), std::back_inserter(matched_values));
+    a.find(search_parameters, std::string("qwert"), std::back_inserter(matched_values));
     std::sort(matched_values.begin(), matched_values.end());
 
     const auto expected_values =
@@ -363,7 +363,7 @@ TEST_CASE("Если замена слишком дорога, то минима�
             [] (auto) {return 10;}, // Вставка и удаление дешёвые.
             [] (auto x, auto y) {return x == y ? 0 : 100500;} // Замена очень дорогая.
         );
-    a.find_levenshtein(search_parameters, std::string("123456"), std::back_inserter(matched_values));
+    a.find(search_parameters, std::string("123456"), std::back_inserter(matched_values));
     std::sort(matched_values.begin(), matched_values.end());
 
     const auto expected_values =

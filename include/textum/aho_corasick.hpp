@@ -532,7 +532,7 @@ namespace textum
                 assert(success);
                 static_cast<void>(success);
 
-                result = collect_values(state, result);
+                result = collect_matching(state, result);
                 ++first;
             }
 
@@ -711,7 +711,7 @@ namespace textum
                 Итератор за последним записанным результатом.
         */
         template <typename OutputIterator>
-        OutputIterator collect_values (state_index_type state, OutputIterator result) const
+        OutputIterator collect_matching (state_index_type state, OutputIterator result) const
         {
             const auto & initial_state_attributes = m_attributes.at(state);
             if (initial_state_attributes.is_accept)

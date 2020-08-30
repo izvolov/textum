@@ -459,13 +459,7 @@ namespace textum
             const auto [state, position] = traverse(m_aho_corasick_automaton.root(), first, last);
             if (position == last)
             {
-                const auto & reachable_values = m_reachable_accept_values.at(state);
-                result =
-                    std::transform(reachable_values.begin(), reachable_values.end(), result,
-                        [this] (auto value_index)
-                        {
-                            return begin()[value_index];
-                        });
+                return collect_reachable(state, result);
             }
 
             return result;
@@ -731,6 +725,39 @@ namespace textum
             }
 
             return result;
+        }
+
+        /*!
+            \brief
+                Собрать метки, ассоциированные с принимаемыми состояниями автомата, достижимыми из
+                заданного состояния
+
+            \details
+                Допустим, некая последовательность привела автомат из начального состояния в
+                состояние `state`. Теперь мы хотим собрать метки всех последовательностей, префиксом
+                которых является эта последовательность.
+
+                Записывает в выходной итератор метки последовательностей, соответствующих
+                принимаемым состояниям автомата, достижимым из состояния `state`.
+
+            \param state
+                Состояние автомата, в который привела некая последовательность.
+            \param result
+                Итератор, в который будут записаны найденные метки.
+
+            \returns
+                Итератор за последним записанным результатом.
+        */
+        template <typename OutputIterator>
+        OutputIterator collect_reachable (state_index_type state, OutputIterator result) const
+        {
+            const auto & reachable_values = m_reachable_accept_values.at(state);
+            return
+                std::transform(reachable_values.begin(), reachable_values.end(), result,
+                    [this] (auto value_index)
+                    {
+                        return begin()[value_index];
+                    });
         }
 
         /*!

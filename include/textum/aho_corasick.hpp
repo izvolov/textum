@@ -260,6 +260,7 @@ namespace textum
                 Итератор за последним записанным результатом.
 
             \see levenshtein_parameters_t
+            \see visit_close_states
         */
         template
         <
@@ -284,41 +285,15 @@ namespace textum
             ) const
             -> OutputIterator
         {
-            using distance_type = Arithmetic;
-            using std::distance;
-            auto initial_row =
-                std::vector<distance_type>(static_cast<std::size_t>(distance(first, last) + 1), 0);
-            fill_initial_levenshtein_row(p, initial_row, first);
-
-            auto stack = std::stack<std::pair<state_index_type, std::vector<distance_type>>>{};
-            stack.emplace(m_aho_corasick_automaton.root(), std::move(initial_row));
-
-            while (not stack.empty())
-            {
-                auto [source, source_row] = std::move(stack.top());
-                stack.pop();
-
-                // Может быть, стоит проверять расстояние не после вынимания из стека,
-                // а перед укладкой в стек?
-                if (m_attributes.at(source).is_accept && source_row.back() <= p.distance_limit)
+            visit_close_states(p, m_aho_corasick_automaton.root(), first, last,
+                [& result, this] (auto state, auto distance)
                 {
-                    *result = std::pair(begin()[m_value_indices.at(source)], source_row.back());
-                    ++result;
-                }
-
-                const auto not_too_far_away = [& p] (auto x) {return x <= p.distance_limit;};
-                if (std::any_of(source_row.begin(), source_row.end(), not_too_far_away))
-                {
-                    m_aho_corasick_automaton.visit_transitions(source,
-                        [& p, & stack, & source_row = source_row, & first, this]
-                            (auto /*source*/, const auto & symbol, auto destination)
-                            {
-                                auto destination_row = source_row;
-                                this->fill_levenshtein_row(p, source_row, destination_row, symbol, first);
-                                stack.emplace(destination, std::move(destination_row));
-                            });
-                }
-            }
+                    if (m_attributes.at(state).is_accept)
+                    {
+                        *result = std::pair(begin()[m_value_indices.at(state)], distance);
+                        ++result;
+                    }
+                });
 
             return result;
         }
@@ -462,6 +437,102 @@ namespace textum
             using std::begin;
             using std::end;
             return find_prefix(begin(sequence), end(sequence), result);
+        }
+
+        /*!
+            \brief
+                Нечёткий префиксный поиск по расстоянию Левенштейна
+
+            \details
+                Находит в автомате все состояния, соответствующие последовательностям, префикс
+                которых отличается по Левенштейну от искомой последовательности не более, чем на
+                `p.distance_limit`, и записывает в выходной итератор пары `(метка, расстояние)`,
+                где `метка` — значение (заданное при инициализации), ассоциированное с найденной
+                последовательностью, а `расстояние` — это кратчайшее расстояние по Левенштейну между
+                искомой последовательностью и префиксом найденной последовательности.
+
+                Асимптотика:
+                -   Время: `O(|[first, last)| * |S| ^ 2)`;
+                -   Память: `O(|[first, last)| * |S| ^ 2)`, где `S` — множество состояний автомата.
+                -   Худший случай по времени и памяти достигается тогда, когда:
+                    1.  Пришлось пройти по всем состояниям автомата. Например, это происходит, если
+                        нет ограничения на максимальное расстояние между сравниваемыми
+                        последовательностями;
+                    2.  Каждое состояние автомата — принимаемое.
+
+            \param p
+                Параметры нечёткого поиска.
+            \param [first, last)
+                Искомый префикс. Каждый его символ должен быть приводимым к типу `symbol_type`.
+            \param result
+                Итератор, в который будут записаны полученные результаты.
+
+            \returns
+                Итератор за последним записанным результатом.
+
+            \see levenshtein_parameters_t
+            \see visit_close_states
+            \see collect_reachable
+        */
+        template
+        <
+            typename Arithmetic,
+            typename UnaryFunction,
+            typename BinaryFunction,
+            typename RandomAccessIterator,
+            typename Sentinel,
+            typename OutputIterator,
+            typename =
+                std::enable_if_t
+                <
+                    std::is_convertible_v<iterator_value_t<RandomAccessIterator>, symbol_type>
+                >>
+        auto
+            find_prefix
+            (
+                levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
+                RandomAccessIterator first,
+                Sentinel last,
+                OutputIterator result
+            ) const
+            -> OutputIterator
+        {
+            std::vector<std::pair<mapped_type, Arithmetic>> results;
+            visit_close_states(p, m_aho_corasick_automaton.root(), first, last,
+                [& results, this] (auto state, auto distance)
+                {
+                    this->collect_reachable(state, std::back_inserter(results), distance);
+                });
+
+            std::sort(results.begin(), results.end());
+            const auto unique_end =
+                std::unique(results.begin(), results.end(),
+                    [] (const auto & l, const auto & r)
+                    {
+                        return l.first == r.first;
+                    });
+            return std::copy(results.begin(), unique_end, result);
+        }
+
+        template
+        <
+            typename Arithmetic,
+            typename UnaryFunction,
+            typename BinaryFunction,
+            typename InputRange,
+            typename OutputIterator
+        >
+        auto
+            find_prefix
+            (
+                levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
+                const InputRange & sequence,
+                OutputIterator result
+            ) const
+        {
+            using std::begin;
+            using std::end;
+            return find_prefix(std::move(p), begin(sequence), end(sequence), result);
         }
 
         /*!
@@ -658,6 +729,109 @@ namespace textum
 
         /*!
             \brief
+                Посетить узлы автомата, соответствующие строкам, отличающимся от заданной не более,
+                чем на расстояние, заданное в параметрах нечёткого поиска
+
+            \details
+                Посещает все подходящие состояния автомата, и для каждого состояния, с которым
+                ассоциирована последовательность, которая отличается от искомой последовательности
+                не более, чем на `p.distance_limit` по Левенштейну, вызывает посетителя `visit`.
+
+                Асимптотика:
+                -   Время: `O(|[first, last)| * |S|)`;
+                -   Память: `O(|[first, last)| * |S|)`, где `S` — множество состояний автомата.
+                -   Худший случай по времени и памяти достигается тогда, когда пришлось пройти по
+                    всем состояниям автомата. Например, это происходит, если нет ограничения на
+                    максимальное расстояние между сравниваемыми последовательностями.
+
+            \param p
+                Параметры нечёткого поиска.
+            \param state
+            \param [first, last)
+                Полуинтервал, задающий искомую последовательность символов. Символы должны быть
+                приводимыми к типу `symbol_type`.
+            \param visit
+            \parblock
+                Посетитель состояний автомата. Вызывается следующим образом:
+
+                \code{.cpp}
+                visit(s, distance);
+                \endcode
+
+                Здесь `s` — это посещённое состояние, `distance` — расстояние по Левенштейну от
+                последовательности, ассоциированной с состоянием `s` до искомой
+                последовательности.
+            \endparblock
+
+            \returns
+                Экземпляр посетителя, который посетил все нужные состояний.
+
+            \see levenshtein_parameters_t
+        */
+        template
+        <
+            typename Arithmetic,
+            typename UnaryFunction,
+            typename BinaryFunction,
+            typename RandomAccessIterator,
+            typename Sentinel,
+            typename BinaryFunction2,
+            typename =
+                std::enable_if_t
+                <
+                    std::is_convertible_v<iterator_value_t<RandomAccessIterator>, symbol_type>
+                >>
+        auto
+            visit_close_states
+            (
+                levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
+                state_index_type state,
+                RandomAccessIterator first,
+                Sentinel last,
+                BinaryFunction2 visit
+            ) const
+            -> BinaryFunction2
+        {
+            using distance_type = Arithmetic;
+            using std::distance;
+            auto initial_row =
+                std::vector<distance_type>(static_cast<std::size_t>(distance(first, last) + 1), 0);
+            fill_initial_levenshtein_row(p, initial_row, first);
+
+            auto stack = std::stack<std::pair<state_index_type, std::vector<distance_type>>>{};
+            stack.emplace(state, std::move(initial_row));
+
+            while (not stack.empty())
+            {
+                auto [source, source_row] = std::move(stack.top());
+                stack.pop();
+
+                // Может быть, стоит проверять расстояние не после вынимания из стека,
+                // а перед укладкой в стек?
+                if (auto distance = source_row.back(); distance <= p.distance_limit)
+                {
+                    visit(source, distance);
+                }
+
+                const auto not_too_far_away = [& p] (auto x) {return x <= p.distance_limit;};
+                if (std::any_of(source_row.begin(), source_row.end(), not_too_far_away))
+                {
+                    m_aho_corasick_automaton.visit_transitions(source,
+                        [& p, & stack, & source_row = source_row, & first, this]
+                            (auto /*source*/, const auto & symbol, auto destination)
+                            {
+                                auto destination_row = source_row;
+                                this->fill_levenshtein_row(p, source_row, destination_row, symbol, first);
+                                stack.emplace(destination, std::move(destination_row));
+                            });
+                }
+            }
+
+            return visit;
+        }
+
+        /*!
+            \brief
                 Собрать все суффиксы, принимаемые автоматом в данном состоянии
 
             \details
@@ -730,6 +904,43 @@ namespace textum
                     [this] (auto value_index)
                     {
                         return begin()[value_index];
+                    });
+        }
+
+        /*!
+            \brief
+                Собрать метки, ассоциированные с принимаемыми состояниями автомата, достижимыми из
+                заданного состояния, а также расстояние до них по Левенштейну
+
+            \details
+                Делает всё то же самое, что перегрузка с двумя аргументами, но к каждому результату
+                дополнительно приклеивает расстояние `distance`.
+
+            \param state
+                Состояние автомата, в который привела некая последовательность.
+            \param result
+                Итератор, в который будут записаны найденные метки.
+            \param distance
+                Расстояние по Левенштейну до найденных меток.
+
+            \returns
+                Итератор за последним записанным результатом.
+        */
+        template <typename OutputIterator, typename Arithmetic>
+        OutputIterator
+            collect_reachable
+            (
+                state_index_type state,
+                OutputIterator result,
+                Arithmetic distance
+            ) const
+        {
+            const auto & reachable_values = m_reachable_accept_values.at(state);
+            return
+                std::transform(reachable_values.begin(), reachable_values.end(), result,
+                    [this, distance] (auto value_index)
+                    {
+                        return std::make_pair(begin()[value_index], distance);
                     });
         }
 

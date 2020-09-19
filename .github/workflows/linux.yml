@@ -19,6 +19,12 @@ jobs:
             package: "g++-8"
           - name: "g++-9"
             package: "g++-9"
+          - name: "clang++-8"
+            package: "clang-8"
+          - name: "clang++-9"
+            package: "clang-9"
+          - name: "clang++-10"
+            package: "clang-10"
         build_type: ["Debug", "Release"]
 
     runs-on: ${{matrix.os}}

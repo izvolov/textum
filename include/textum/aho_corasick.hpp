@@ -310,11 +310,11 @@ namespace textum
                 if (std::any_of(source_row.begin(), source_row.end(), not_too_far_away))
                 {
                     m_aho_corasick_automaton.visit_transitions(source,
-                        [& p, & stack, & source_row, & first, this]
+                        [& p, & stack, & source_row = source_row, & first, this]
                             (auto /*source*/, const auto & symbol, auto destination)
                             {
                                 auto destination_row = source_row;
-                                fill_levenshtein_row(p, source_row, destination_row, symbol, first);
+                                this->fill_levenshtein_row(p, source_row, destination_row, symbol, first);
                                 stack.emplace(destination, std::move(destination_row));
                             });
                 }
@@ -564,7 +564,10 @@ namespace textum
                 if (success)
                 {
                     visit_sources_of_path(sequence,
-                        [value_index, this] (auto state) {attach_reachable_value(state, value_index);});
+                        [value_index = value_index, this] (auto state)
+                        {
+                            attach_reachable_value(state, value_index);
+                        });
                     attach_reachable_value(state, value_index);
                 }
             }

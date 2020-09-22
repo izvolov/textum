@@ -84,14 +84,14 @@ namespace textum
         \see levenshtein_parameters_t
     */
     template <typename Arithmetic>
-    auto levenshtein (Arithmetic d)
+    constexpr auto levenshtein (Arithmetic d)
         -> levenshtein_parameters_t<Arithmetic>
     {
         return {d};
     }
 
     template <typename Arithmetic, typename UnaryFunction, typename BinaryFunction>
-    auto
+    constexpr auto
         levenshtein
         (
             Arithmetic distance,

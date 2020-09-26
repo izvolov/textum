@@ -20,6 +20,24 @@
 
 namespace textum
 {
+
+        template <typename Map, typename Key, typename Mapped, typename UnaryPredicate>
+        void insert_min_if (Map & map, Key && key, Mapped && mapped, UnaryPredicate p)
+        {
+            if (p(mapped))
+            {
+                using mapped_type = typename Map::mapped_type;
+                if (auto item = map.find(key); item != map.end())
+                {
+                    item->second = std::min(item->second, mapped_type{std::forward<Mapped>(mapped)});
+                }
+                else
+                {
+                    map.emplace(std::forward<Key>(key), std::forward<Mapped>(mapped));
+                }
+            }
+        }
+
     template <typename Integral>
     constexpr auto not_set = std::numeric_limits<Integral>::max();
 
@@ -1121,6 +1139,125 @@ namespace textum
             using std::begin;
             using std::end;
             return traverse(source, begin(sequence), end(sequence));
+        }
+
+        template
+        <
+            typename Arithmetic,
+            typename UnaryFunction,
+            typename BinaryFunction,
+            typename RandomAccessIterator,
+            typename Sentinel,
+            typename BinaryFunction2,
+            typename =
+                std::enable_if_t
+                <
+                    std::is_convertible_v<iterator_value_t<RandomAccessIterator>, symbol_type>
+                >>
+        auto
+            traverse_experimental
+            (
+                levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
+                state_index_type state,
+                RandomAccessIterator first,
+                Sentinel last,
+                BinaryFunction2 visit
+            ) const
+            -> BinaryFunction2
+        {
+            using distance_type = Arithmetic;
+            auto locations =
+                std::map<std::pair<state_index_type, RandomAccessIterator>, distance_type>
+                {
+                    {{state, first}, distance_type{0}}
+                };
+
+            std::vector<std::pair<state_index_type, distance_type>> results;
+
+            const auto distance_is_ok = [d = p.distance_limit] (auto x) {return x <= d;};
+
+            while (not locations.empty())
+            {
+                // std::cout << locations.size() << std::endl;
+                std::map<std::pair<state_index_type, RandomAccessIterator>, distance_type> new_locations;
+
+                for (auto [location, distance]: locations)
+                {
+                    auto [state, position] = location;
+                    // if (distance <= p.distance_limit)
+                    // {
+                        if (position == last)
+                        {
+                            results.emplace_back(state, distance);
+                        }
+                        else
+                        {
+                            insert_min_if(new_locations, std::pair{state, position + 1}, distance + p.deletion_or_insertion_penalty(*position), distance_is_ok);
+                            // auto new_distance = distance + p.deletion_or_insertion_penalty(*position);
+                            // if (auto item = new_locations.find({state, position + 1}); item != new_locations.end())
+                            // {
+                            //     item->second = std::min(item->second, new_distance);
+                            // }
+                            // else
+                            // {
+                            //     new_locations.emplace({state, position + 1}, new_distance);
+                            // }
+                        }
+
+                        m_aho_corasick_automaton.visit_transitions(state,
+                            [& new_locations, & p, & distance = distance, & position = position, & last, & distance_is_ok] (auto /*source*/, const auto & symbol, auto destination)
+                            {
+                                insert_min_if(new_locations, std::pair{destination, position}, distance + p.deletion_or_insertion_penalty(symbol), distance_is_ok);
+                                // new_locations.emplace_back(destination, distance + p.deletion_or_insertion_penalty(symbol), position);
+                                if (position != last)
+                                {
+                                    insert_min_if(new_locations, std::pair{destination, position + 1}, distance + p.replacement_penalty(*position, symbol), distance_is_ok);
+                                    // new_locations.emplace_back(destination, distance + p.replacement_penalty(*position, symbol), position + 1);
+                                }
+                            });
+                    // }
+                }
+
+                // new_locations.erase
+                // (
+                //     std::remove_if(new_locations.begin(), new_locations.end(),
+                //         [& p] (const auto & x)
+                //         {
+                //             return std::get<1>(x) > p.distance_limit;
+                //         }),
+                //     new_locations.end()
+                // );
+                // std::sort(new_locations.begin(), new_locations.end());
+                // new_locations.erase
+                // (
+                //     std::unique(new_locations.begin(), new_locations.end(),
+                //         [] (const auto & l, const auto & r)
+                //         {
+                //             return std::get<0>(l) == std::get<0>(r) && std::get<2>(l) == std::get<2>(r);
+                //         }),
+                //     new_locations.end()
+                // );
+
+                locations = std::move(new_locations);
+            }
+
+            std::sort(results.begin(), results.end());
+            results.erase
+            (
+                std::unique(results.begin(), results.end(),
+                    [] (const auto & l, const auto & r)
+                    {
+                        return l.first == r.first;
+                    }),
+                results.end()
+            );
+
+            for (auto [state, distance]: results)
+            {
+                visit(state, distance);
+            }
+
+            return visit;
         }
 
         /*!

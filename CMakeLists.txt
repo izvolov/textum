@@ -5,7 +5,7 @@
 ###################################################################################################
 
 cmake_minimum_required(VERSION 3.14)
-project(Textum VERSION 1.0 LANGUAGES CXX)
+project(Textum VERSION 1.1.0 LANGUAGES CXX)
 
 get_directory_property(IS_SUBPROJECT PARENT_DIRECTORY)
 

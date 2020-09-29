@@ -141,29 +141,25 @@ auto match_words_raw (const std::wstring & u32w, const textum::aho_corasick<wcha
 }
 
 auto
-    weigh_matched_words
+    append_string_factors
     (
         const std::wstring & u32w,
         const std::vector<std::pair<std::int32_t, double>> & matched_words,
         const std::unordered_map<std::int32_t, std::wstring> & id_to_word
     )
 {
-    std::vector<std::tuple<std::int32_t, double, double, bool>> weighted_words;
+    std::vector<std::tuple<std::int32_t, double, std::int32_t, bool>> weighted_words;
     weighted_words.reserve(matched_words.size());
 
     for (const auto & [word_id, distance]: matched_words)
     {
         const auto & word = id_to_word.at(word_id);
 
-        const auto query_word_size = static_cast<double>(u32w.size());
-        const auto distance_weight = (query_word_size - static_cast<double>(distance)) / query_word_size;
-
         const auto mismatch = std::mismatch(u32w.begin(), u32w.end(), word.begin(), word.end());
         const auto position = mismatch.first - u32w.begin();
-        auto position_weight = static_cast<double>(position + 1) / (query_word_size + 1);
 
         const auto exact_match = u32w == word;
-        weighted_words.emplace_back(word_id, distance_weight, position_weight, exact_match);
+        weighted_words.emplace_back(word_id, distance, position, exact_match);
     }
 
     return weighted_words;
@@ -178,7 +174,7 @@ auto
     )
 {
     auto matched_words = match_words_raw(u32w, a);
-    return weigh_matched_words(u32w, matched_words, id_to_word);
+    return append_string_factors(u32w, matched_words, id_to_word);
 }
 
 int main (int /*argc*/, const char * argv[])
@@ -208,10 +204,19 @@ int main (int /*argc*/, const char * argv[])
         const auto match_count = matched_words.size();
 
         std::sort(matched_words.begin(), matched_words.end(),
-            [] (auto l, auto r)
+            [] (const auto & l, const auto & r)
             {
-                std::get<0>(l) = std::get<0>(r) = 0;
-                return l > r;
+                return std::get<1>(l) < std::get<1>(r);
+            });
+        std::stable_sort(matched_words.begin(), matched_words.end(),
+            [] (const auto & l, const auto & r)
+            {
+                return std::get<2>(l) > std::get<2>(r);
+            });
+        std::stable_sort(matched_words.begin(), matched_words.end(),
+            [] (const auto & l, const auto & r)
+            {
+                return std::get<3>(l) > std::get<3>(r);
             });
         matched_words.resize(std::min(matched_words.size(), max_candidates));
 

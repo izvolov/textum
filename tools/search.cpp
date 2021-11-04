@@ -41,7 +41,7 @@ inline auto to_lower (const std::locale & l)
 template <typename Char>
 auto to_lower (std::basic_string<Char> s, const std::locale & l)
 {
-    return to_lower(l)(s);
+    return to_lower(l)(std::move(s));
 }
 
 using utf32_converter_type = std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>;
@@ -66,11 +66,31 @@ struct utf32_to_utf8_t
 
 auto split (const std::string & s, const std::locale & locale)
 {
-    std::stringstream ss(s);
+    auto u32s = to_lower(locale)(utf8_to_utf32(s));
+    std::replace(u32s.begin(), u32s.end(), U'«', U' ');
+    std::replace(u32s.begin(), u32s.end(), U'»', U' ');
+
+    std::wstringstream stream(u32s);
     std::vector<std::wstring> v;
-    for (std::string w; ss >> w; /*пусто*/)
+    for (std::wstring u32w; stream >> u32w; /*пусто*/)
     {
-        v.push_back(to_lower(locale)(utf8_to_utf32(std::move(w))));
+        // std::cout << w << std::endl;
+        // auto u32_word = to_lower(locale)(utf8_to_utf32(std::move(w)));
+        // std::cout << U'«' << std::endl;
+        // std::cout << "---" << std::endl;
+        // auto y = utf8_to_utf32(u8"«");
+        // for (auto x: y)
+        // {
+        //     std::cout << x << std::endl;
+        // }
+        // std::cout << "---" << std::endl;
+        // for (auto x: u32_word)
+        // {
+        //     std::cout << x << std::endl;
+        // }
+        // std::replace_if(u32_word.begin(), u32_word.end(), [] (auto x) {return x == wchar_t{U'«'};}, wchar_t{U' '});
+        // std::replace_if(u32_word.begin(), u32_word.end(), [] (auto x) {return x == wchar_t{U'»'};}, wchar_t{U' '});
+        v.push_back(u32w);
     }
 
     return v;

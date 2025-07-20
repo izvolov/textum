@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v2
 
@@ -20,14 +20,7 @@ jobs:
     - name: Install APT dependencies
       run: |
         sudo apt update
-        sudo apt install --yes gcovr lcov cmake git
-
-    - name: Install doctest
-      run: |
-        git clone https://github.com/onqtam/doctest.git third_party/doctest
-        git -C third_party/doctest checkout 2.3.3
-        cmake -S third_party/doctest -B Build/third_party/doctest -DCMAKE_BUILD_TYPE=Release
-        sudo cmake --build Build/third_party/doctest --target install/fast
+        sudo apt install --yes gcovr lcov cmake doctest-dev
 
     - name: Configure
       run: |

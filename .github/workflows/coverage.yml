@@ -26,14 +26,22 @@ jobs:
       run: |
         cmake -S . -B Build/textum -DCMAKE_BUILD_TYPE=Debug -DTEXTUM_COVERAGE=ON
 
-    - name: Build and test
+    - name: Prepare coverage report
       run: |
-        cmake --build Build/textum --target coverage
+        COVERAGE_REPORT="$(cmake --build Build/textum --target coverage)"
+        echo "$COVERAGE_REPORT"
+        COVERAGE_VALUE="$(echo "$COVERAGE_REPORT" | grep TOTAL | awk '{print $4}')"
+        echo $COVERAGE_VALUE
+        echo "COVERAGE=$(echo $COVERAGE_VALUE)" >> $GITHUB_ENV
 
-    - name: Publish coverage to codecov
-      run: |
-        lcov --version
-        lcov --capture --directory Build/textum --output-file coverage.info
-        lcov --remove coverage.info "/usr/*" --output-file coverage.info
-        lcov --remove coverage.info "*/test/*" --output-file coverage.info
-        bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
+    - name: Create Coverage Badge
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      with:
+        auth: ${{secrets.GIST}}
+        gistID: abed75f53b2d54854a6cab8e52bb850c
+        filename: textum_coverage.json
+        label: Coverage
+        message: ${{env.COVERAGE}}
+        valColorRange: ${{env.COVERAGE}}
+        maxColorRange: 100
+        minColorRange: 0

@@ -31,6 +31,7 @@ if (IS_SUBPROJECT AND NOT DEFINED TEXTUM_TESTING)
  endif()
 
  option(TEXTUM_TESTING "Включить модульное тестирование" ON)
+ option(TEXTUM_BENCHMARKING "Включить замеры производительности" ON)
  option(TEXTUM_COVERAGE "Включить измерение покрытия кода тестами" OFF)
  option(TEXTUM_DOC "Включить документирование" ON)
  option(TEXTUM_WANDBOX "Включить онлайн-песочницу" ON)
@@ -112,6 +113,18 @@ if(NOT TEXTUM_TESTING)
     message(STATUS "Тестирование проекта Textum выключено")
 else()
     add_subdirectory(test)
+endif()
+
+###################################################################################################
+##
+##      Замеры производительности
+##
+###################################################################################################
+
+if(NOT TEXTUM_BENCHMARKING)
+    message(STATUS "Замеры производительности проекта Textum выключены")
+else()
+    add_subdirectory(benchmark)
 endif()
 
 ###################################################################################################

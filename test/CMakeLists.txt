@@ -1,4 +1,4 @@
-find_package(doctest 2.3.3 REQUIRED)
+include(${Textum_SOURCE_DIR}/cmake/doctest.cmake)
 
 add_executable(textum-unit-tests test_main.cpp)
 target_sources(textum-unit-tests PRIVATE

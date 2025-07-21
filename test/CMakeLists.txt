@@ -4,6 +4,7 @@ add_executable(textum-unit-tests test_main.cpp)
 target_sources(textum-unit-tests PRIVATE
     textum/aho_corasick.cpp
     textum/fsm.cpp
+    textum/trie.cpp
 )
 target_link_libraries(textum-unit-tests
     PRIVATE

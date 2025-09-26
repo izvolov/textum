@@ -1,20 +1,14 @@
 #pragma once
 
 #include <textum/trie.hpp>
-#include <textum/levenshtein_parameters.hpp>
-#include <textum/type_traits/iterator_difference.hpp>
 #include <textum/type_traits/iterator_value.hpp>
-#include <textum/type_traits/range_value.hpp>
-#include <textum/type_traits/remove_cvref.hpp>
 
-#include <algorithm>
+#include <cassert>
 #include <cstdint>
 #include <iterator>
 #include <limits>
-#include <numeric>
 #include <queue>
-#include <stack>
-#include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
@@ -33,7 +27,7 @@ namespace textum
             Содержит суффиксную ссылку и принимаемую суффиксную ссылку.
     */
     template <typename Integral>
-    struct aho_corasick_state_attribute_t
+    struct aho_corasick_state_attribute_t: trie_state_attribute_t
     {
         /*!
             Суффиксная ссылка всегда есть. При этом она может соответствовать "пустому" суффиксу,
@@ -56,10 +50,12 @@ namespace textum
             входную строку (см, `match`).
     */
     template <typename Symbol, typename Mapped>
-    class aho_corasick: public trie<Symbol, Mapped>
+    class aho_corasick:
+        public basic_trie<Symbol, Mapped, std::uint32_t, aho_corasick_state_attribute_t<std::uint32_t>>
     {
     public:
-        using trie_type = trie<Symbol, Mapped>;
+        using trie_type =
+            basic_trie<Symbol, Mapped, std::uint32_t, aho_corasick_state_attribute_t<std::uint32_t>>;
         //! Тип символов, из которых состоят хранимые последовательности.
         using symbol_type = typename trie_type::symbol_type;
         //! Тип меток, соответствующих хранимым последовательностям символов.
@@ -72,8 +68,8 @@ namespace textum
         using trie_type::m_value_indices;
         using trie_type::m_values;
 
-        using state_index_type = trie_type::state_index_type;
-        using state_attribute_type = aho_corasick_state_attribute_t<state_index_type>;
+        using state_index_type = std::uint32_t;
+        using state_attribute_type = aho_corasick_state_attribute_t<std::uint32_t>;
 
     public:
         /*!
@@ -84,8 +80,7 @@ namespace textum
                 Создаёт пустой автомат, в котором ничего нельзя найти.
         */
         aho_corasick ():
-            trie_type(),
-            m_aho_corasick_attributes{{this->m_trie_automaton.root(), state_attribute_type{}}}
+            trie_type()
         {
         }
 
@@ -108,7 +103,6 @@ namespace textum
         explicit aho_corasick (InputRange && marked_sequences):
             trie_type(std::forward<InputRange>(marked_sequences))
         {
-            initialize_attributes();
             build_suffix_links();
         }
 
@@ -175,14 +169,6 @@ namespace textum
         }
 
     private:
-        void initialize_attributes ()
-        {
-            for (const auto &[k, _]: m_attributes)
-            {
-                m_aho_corasick_attributes[k] = state_attribute_type{};
-            }
-        }
-
         /*!
             \brief
                 Построение суффиксных ссылок для автомата Ахо-Корасик
@@ -198,14 +184,14 @@ namespace textum
         {
             std::queue<state_index_type> states;
 
-            auto & root_attributes = m_aho_corasick_attributes.at(this->m_trie_automaton.root());
+            auto & root_attributes = m_attributes.at(this->m_trie_automaton.root());
             root_attributes.suffix_link = this->m_trie_automaton.root();
 
             this->m_trie_automaton.visit_transitions(this->m_trie_automaton.root(),
                 [this, & states] (auto /* root */, const auto & /*symbol*/, auto destination)
                 {
-                    auto attributes = m_aho_corasick_attributes.find(destination);
-                    assert(attributes != m_aho_corasick_attributes.end());
+                    auto attributes = m_attributes.find(destination);
+                    assert(attributes != m_attributes.end());
                     attributes->second.suffix_link = this->m_trie_automaton.root();
                     states.push(destination);
                 });
@@ -218,12 +204,12 @@ namespace textum
                 this->m_trie_automaton.visit_transitions(state,
                     [this, & states] (auto source, const auto & symbol, auto destination)
                     {
-                        auto [sl, success] = next(m_aho_corasick_attributes.at(source).suffix_link, symbol);
+                        auto [sl, success] = next(m_attributes.at(source).suffix_link, symbol);
                         assert(success);
                         static_cast<void>(success);
 
-                        auto & destination_attributes = m_aho_corasick_attributes.at(destination);
-                        const auto & suffix_link_attributes = m_aho_corasick_attributes.at(sl);
+                        auto & destination_attributes = m_attributes.at(destination);
+                        const auto & suffix_link_attributes = m_attributes.at(sl);
                         const auto & trie_attributes = m_attributes.at(sl);
 
                         destination_attributes.suffix_link = sl;
@@ -268,7 +254,7 @@ namespace textum
                 ++result;
             }
 
-            const auto & initial_state_ac_attributes = m_aho_corasick_attributes.at(state);
+            const auto & initial_state_ac_attributes = m_attributes.at(state);
             state = initial_state_ac_attributes.accept_suffix_link;
 
             while (state != not_set<state_index_type>)
@@ -277,7 +263,7 @@ namespace textum
                 *result = begin()[m_value_indices.at(state)];
                 ++result;
 
-                state = m_aho_corasick_attributes.at(state).accept_suffix_link;
+                state = m_attributes.at(state).accept_suffix_link;
             }
 
             return result;
@@ -323,14 +309,11 @@ namespace textum
                 }
                 else
                 {
-                    source = m_aho_corasick_attributes.at(source).suffix_link;
+                    source = m_attributes.at(source).suffix_link;
                 }
             }
 
             return std::pair(this->m_trie_automaton.next(source, symbol).first, true);
         }
-
-        //! Дополнительные атрибуты состояний.
-        std::unordered_map<state_index_type, state_attribute_type> m_aho_corasick_attributes;
     };
 } // namespace textum

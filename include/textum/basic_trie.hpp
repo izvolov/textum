@@ -2,10 +2,6 @@
 
 #include <textum/fsm.hpp>
 #include <textum/levenshtein_parameters.hpp>
-#include <textum/type_traits/iterator_difference.hpp>
-#include <textum/type_traits/iterator_value.hpp>
-#include <textum/type_traits/range_value.hpp>
-#include <textum/type_traits/remove_cvref.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -13,6 +9,7 @@
 #include <iterator>
 #include <limits>
 #include <numeric>
+#include <ranges>
 #include <stack>
 #include <type_traits>
 #include <unordered_map>
@@ -81,11 +78,11 @@ namespace textum
                 из элементов, приводимых к типу `symbol_type`, а `метка` — это некое значение,
                 ассоциированное с данной последовательностью, приводимое к типу `mapped_type`.
         */
-        template <typename InputRange>
-        explicit basic_trie (InputRange && marked_sequences):
+        template <std::ranges::input_range R>
+        explicit basic_trie (R && marked_sequences):
             basic_trie()
         {
-            initialize(std::forward<InputRange>(marked_sequences));
+            initialize(std::forward<R>(marked_sequences));
         }
 
         /*!
@@ -163,9 +160,9 @@ namespace textum
                 Итератор на метку последовательности, если автомат принимает данную
                 последовательность, и `end()` в противном случае.
         */
-        template <typename InputIterator, typename Sentinel, typename =
-            std::enable_if_t<std::is_convertible_v<iterator_value_t<InputIterator>, symbol_type>>>
-        auto find (InputIterator first, Sentinel last) const
+        template <std::input_iterator I, std::sentinel_for<I> S>
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
+        auto find (I first, S last) const
         {
             auto [state, position] = traverse(m_trie_automaton.root(), first, last);
             if (position == last)
@@ -189,9 +186,9 @@ namespace textum
 
             \see find
         */
-        template <typename InputRange, typename =
-            std::enable_if_t<std::is_convertible_v<range_value_t<InputRange>, symbol_type>>>
-        auto find (const InputRange & sequence) const
+        template <std::ranges::input_range R>
+            requires(std::is_convertible_v<std::ranges::range_value_t<R>, symbol_type>)
+        auto find (const R & sequence) const
         {
             using std::begin;
             using std::end;
@@ -235,23 +232,20 @@ namespace textum
             typename Arithmetic,
             typename UnaryFunction,
             typename BinaryFunction,
-            typename RandomAccessIterator,
-            typename Sentinel,
-            typename OutputIterator,
-            typename =
-                std::enable_if_t
-                <
-                    std::is_convertible_v<iterator_value_t<RandomAccessIterator>, symbol_type>
-                >>
+            std::random_access_iterator I,
+            std::sentinel_for<I> S,
+            std::output_iterator<std::pair<mapped_type, Arithmetic>> O
+        >
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
         auto
             find
             (
                 levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
-                RandomAccessIterator first,
-                Sentinel last,
-                OutputIterator result
+                I first,
+                S last,
+                O result
             ) const
-            -> OutputIterator
+            -> O
         {
             visit_close_states(p, m_trie_automaton.root(), first, last,
                 [& result, this] (auto state, auto distance)
@@ -281,15 +275,15 @@ namespace textum
             typename Arithmetic,
             typename UnaryFunction,
             typename BinaryFunction,
-            typename InputRange,
-            typename OutputIterator
+            std::ranges::input_range R,
+            std::output_iterator<std::pair<mapped_type, Arithmetic>> O
         >
         auto
             find
             (
                 levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
-                const InputRange & sequence,
-                OutputIterator result
+                const R & sequence,
+                O result
             ) const
         {
             using std::begin;
@@ -303,7 +297,7 @@ namespace textum
 
             \details
                 В качестве типа, задающего редакционное расстояние, по умолчанию берётся
-                `RandomAccessIterator::difference_type`.
+                `std::iter_difference_t<I>`.
 
             \returns
                 `find_levenshtein(default_levenshtein<difference_type>, first, last, result)`
@@ -311,26 +305,11 @@ namespace textum
             \see find_levenshtein
             \see default_levenshtein
         */
-        template
-        <
-            typename RandomAccessIterator,
-            typename Sentinel,
-            typename OutputIterator,
-            typename =
-                std::enable_if_t
-                <
-                    std::is_convertible_v<iterator_value_t<RandomAccessIterator>, symbol_type>
-                >>
-        auto
-            find_levenshtein
-            (
-                RandomAccessIterator first,
-                Sentinel last,
-                OutputIterator result
-            ) const
-            -> OutputIterator
+        template <std::random_access_iterator I, std::sentinel_for<I> S, typename OutputIterator>
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
+        auto find_levenshtein (I first, S last, OutputIterator result) const
         {
-            using difference_type = iterator_difference_t<RandomAccessIterator>;
+            using difference_type = std::iter_difference_t<I>;
             return find(default_levenshtein<difference_type>, first, last, result);
         }
 
@@ -344,8 +323,8 @@ namespace textum
             \see find_levenshtein
             \see default_levenshtein
         */
-        template <typename InputRange, typename OutputIterator>
-        auto find_levenshtein (const InputRange & sequence, OutputIterator result) const
+        template <std::ranges::input_range R, typename OutputIterator>
+        auto find_levenshtein (const R & sequence, OutputIterator result) const
         {
             using std::begin;
             using std::end;
@@ -377,9 +356,15 @@ namespace textum
             \returns
                 Итератор за последним записанным результатом.
         */
-        template <typename InputIterator, typename Sentinel, typename OutputIterator, typename =
-            std::enable_if_t<std::is_convertible_v<iterator_value_t<InputIterator>, symbol_type>>>
-        auto find_prefix (InputIterator first, Sentinel last, OutputIterator result) const
+        template
+        <
+            std::input_iterator I,
+            std::sentinel_for<I> S,
+            std::output_iterator<mapped_type> O
+        >
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
+        auto find_prefix (I first, S last, O result) const
+            -> O
         {
             const auto [state, position] = traverse(m_trie_automaton.root(), first, last);
             if (position == last)
@@ -399,8 +384,8 @@ namespace textum
 
             \see find_prefix
         */
-        template <typename InputRange, typename OutputIterator>
-        auto find_prefix (const InputRange & sequence, OutputIterator result) const
+        template <std::ranges::input_range R, typename OutputIterator>
+        auto find_prefix (const R & sequence, OutputIterator result) const
         {
             using std::begin;
             using std::end;
@@ -447,23 +432,20 @@ namespace textum
             typename Arithmetic,
             typename UnaryFunction,
             typename BinaryFunction,
-            typename RandomAccessIterator,
-            typename Sentinel,
-            typename OutputIterator,
-            typename =
-                std::enable_if_t
-                <
-                    std::is_convertible_v<iterator_value_t<RandomAccessIterator>, symbol_type>
-                >>
+            std::random_access_iterator I,
+            std::sentinel_for<I> S,
+            std::output_iterator<std::pair<mapped_type, Arithmetic>> O
+        >
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
         auto
             find_prefix
             (
                 levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
-                RandomAccessIterator first,
-                Sentinel last,
-                OutputIterator result
+                I first,
+                S last,
+                O result
             ) const
-            -> OutputIterator
+            -> O
         {
             std::vector<std::pair<mapped_type, Arithmetic>> results;
             visit_close_states(p, m_trie_automaton.root(), first, last,
@@ -487,14 +469,14 @@ namespace textum
             typename Arithmetic,
             typename UnaryFunction,
             typename BinaryFunction,
-            typename InputRange,
+            std::ranges::input_range R,
             typename OutputIterator
         >
         auto
             find_prefix
             (
                 levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
-                const InputRange & sequence,
+                const R & sequence,
                 OutputIterator result
             ) const
         {
@@ -515,10 +497,10 @@ namespace textum
                 В общем, формирует корректный автомат, с которым в дальнейшем будет происходить
                 вся работа.
         */
-        template <typename InputRange>
-        void initialize (InputRange && marked_sequences)
+        template <std::ranges::input_range R>
+        void initialize (R && marked_sequences)
         {
-            build_trie(std::forward<InputRange>(marked_sequences));
+            build_trie(std::forward<R>(marked_sequences));
         }
 
         /*!
@@ -529,10 +511,10 @@ namespace textum
                 По набору помеченных последовательностей строит классический бор и помечает
                 выделенные вершины бора метками соответствующих им последовательностей.
         */
-        template <typename InputRange>
-        void build_trie (InputRange && marked_sequences)
+        template <std::ranges::input_range R>
+        void build_trie (R && marked_sequences)
         {
-            for (auto && [sequence, mark]: std::forward<InputRange>(marked_sequences))
+            for (auto && [sequence, mark]: std::forward<R>(marked_sequences))
             {
                 auto state = insert(std::forward<decltype(sequence)>(sequence));
                 const auto [value_index, success] =
@@ -565,8 +547,8 @@ namespace textum
                 Посетитель узлов. Принимает описатель узла (элемент типа `state_index_type`) и
                 производит над ним необходимую работу.
         */
-        template <typename InputRange, typename UnaryFunction>
-        void visit_sources_of_path (const InputRange & sequence, UnaryFunction && visit_state)
+        template <std::ranges::input_range R, typename UnaryFunction>
+        void visit_sources_of_path (const R & sequence, UnaryFunction && visit_state)
         {
             auto state = m_trie_automaton.root();
             for (const auto & symbol: sequence)
@@ -625,21 +607,18 @@ namespace textum
             typename Arithmetic,
             typename UnaryFunction,
             typename BinaryFunction,
-            typename RandomAccessIterator,
-            typename Sentinel,
-            typename BinaryFunction2,
-            typename =
-                std::enable_if_t
-                <
-                    std::is_convertible_v<iterator_value_t<RandomAccessIterator>, symbol_type>
-                >>
+            std::random_access_iterator I,
+            std::sentinel_for<I> S,
+            typename BinaryFunction2
+        >
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
         auto
             visit_close_states
             (
                 levenshtein_parameters_t<Arithmetic, UnaryFunction, BinaryFunction> p,
                 state_index_type state,
-                RandomAccessIterator first,
-                Sentinel last,
+                I first,
+                S last,
                 BinaryFunction2 visit
             ) const
             -> BinaryFunction2
@@ -703,8 +682,9 @@ namespace textum
             \returns
                 Итератор за последним записанным результатом.
         */
-        template <typename OutputIterator>
-        OutputIterator collect_reachable (state_index_type state, OutputIterator result) const
+        template <std::output_iterator<mapped_type> O>
+        auto collect_reachable (state_index_type state, O result) const
+            -> O
         {
             const auto & reachable_values = m_reachable_accept_values.at(state);
             return
@@ -734,14 +714,15 @@ namespace textum
             \returns
                 Итератор за последним записанным результатом.
         */
-        template <typename OutputIterator, typename Arithmetic>
-        OutputIterator
+        template <typename Arithmetic, std::output_iterator<std::pair<mapped_type, Arithmetic>> O>
+        auto
             collect_reachable
             (
                 state_index_type state,
-                OutputIterator result,
+                O result,
                 Arithmetic distance
             ) const
+            -> O
         {
             const auto & reachable_values = m_reachable_accept_values.at(state);
             return
@@ -785,7 +766,7 @@ namespace textum
             initial_row[0] = Arithmetic{0};
             for (auto i = 1ul; i < initial_row.size(); ++i)
             {
-                using difference_type = iterator_difference_t<RandomAccessIterator>;
+                using difference_type = std::iter_difference_t<RandomAccessIterator>;
                 const auto & value = pattern[static_cast<difference_type>(i) - 1];
                 initial_row[i] = initial_row[i - 1] + p.deletion_or_insertion_penalty(value);
             }
@@ -864,7 +845,7 @@ namespace textum
             destination_row[0] = source_row[0] + p.deletion_or_insertion_penalty(symbol);
             for (auto i = 1ul; i < destination_row.size(); ++i)
             {
-                using difference_type = iterator_difference_t<RandomAccessIterator>;
+                using difference_type = std::iter_difference_t<RandomAccessIterator>;
                 auto value = pattern[static_cast<difference_type>(i) - 1];
                 destination_row[i] =
                     std::min
@@ -895,10 +876,10 @@ namespace textum
                 первый из элементов входной последовательности, по которому в автомате нет перехода
                 из состояния `s`. Если удалось пройти по всем символам, то `p == last`.
         */
-        template <typename ForwardIterator, typename Sentinel, typename =
-            std::enable_if_t<std::is_convertible_v<iterator_value_t<ForwardIterator>, symbol_type>>>
-        auto traverse (state_index_type state, ForwardIterator first, Sentinel last) const
-            -> std::pair<state_index_type, ForwardIterator>
+        template <std::forward_iterator I, std::sentinel_for<I> S>
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
+        auto traverse (state_index_type state, I first, S last) const
+            -> std::pair<state_index_type, I>
         {
             while (first != last)
             {
@@ -922,9 +903,8 @@ namespace textum
             \returns
                 `traverse(source, begin(sequence), end(sequence))`
         */
-        template <typename ForwardRange, typename =
-            std::enable_if_t<not std::is_convertible_v<ForwardRange, symbol_type>>>
-        auto traverse (state_index_type source, const ForwardRange & sequence) const
+        template <std::ranges::forward_range R>
+        auto traverse (state_index_type source, const R & sequence) const
         {
             using std::begin;
             using std::end;
@@ -949,9 +929,9 @@ namespace textum
             \pre
                 Отсутствует переход из состояния `state` по символу `first[0]`.
         */
-        template <typename InputIterator, typename Sentinel, typename =
-            std::enable_if_t<std::is_convertible_v<iterator_value_t<InputIterator>, symbol_type>>>
-        auto grow (state_index_type state, InputIterator first, Sentinel last)
+        template <std::input_iterator I, std::sentinel_for<I> S>
+            requires(std::is_convertible_v<std::iter_value_t<I>, symbol_type>)
+        auto grow (state_index_type state, I first, S last)
             -> state_index_type
         {
             while (first != last)
@@ -993,9 +973,9 @@ namespace textum
             \see traverse
             \see grow
         */
-        template <typename ForwardIterator, typename Sentinel, typename =
-            std::enable_if_t<std::is_convertible_v<iterator_value_t<ForwardIterator>, symbol_type>>>
-        auto insert (state_index_type source, ForwardIterator first, Sentinel last)
+        template <std::forward_iterator I, std::sentinel_for<I> S>
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
+        auto insert (state_index_type source, I first, S last)
             -> state_index_type
         {
             auto [state, position] = traverse(source, first, last);
@@ -1014,9 +994,9 @@ namespace textum
 
             \see insert
         */
-        template <typename ForwardIterator, typename Sentinel, typename =
-            std::enable_if_t<std::is_convertible_v<iterator_value_t<ForwardIterator>, symbol_type>>>
-        auto insert (ForwardIterator first, Sentinel last)
+        template <std::forward_iterator I, std::sentinel_for<I> S>
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
+        auto insert (I first, S last)
         {
             return insert(m_trie_automaton.root(), first, last);
         }
@@ -1030,9 +1010,9 @@ namespace textum
 
             \see insert
         */
-        template <typename ForwardRange, typename =
-            std::enable_if_t<std::is_convertible_v<range_value_t<ForwardRange>, symbol_type>>>
-        auto insert (state_index_type source, ForwardRange && sequence)
+        template <std::ranges::forward_range R>
+            requires(std::convertible_to<std::ranges::range_value_t<R>, symbol_type>)
+        auto insert (state_index_type source, R && sequence)
         {
             using std::begin;
             using std::end;
@@ -1041,8 +1021,8 @@ namespace textum
                 insert
                 (
                     source,
-                    begin(std::forward<ForwardRange>(sequence)),
-                    end(std::forward<ForwardRange>(sequence))
+                    begin(std::forward<R>(sequence)),
+                    end(std::forward<R>(sequence))
                 );
         }
 
@@ -1059,9 +1039,9 @@ namespace textum
 
             \see insert
         */
-        template <typename ForwardRange, typename =
-            std::enable_if_t<std::is_convertible_v<range_value_t<ForwardRange>, symbol_type>>>
-        auto insert (ForwardRange && sequence)
+        template <std::ranges::forward_range R>
+            requires(std::convertible_to<std::ranges::range_value_t<R>, symbol_type>)
+        auto insert (R && sequence)
         {
             using std::begin;
             using std::end;
@@ -1069,8 +1049,8 @@ namespace textum
             return
                 insert
                 (
-                    begin(std::forward<ForwardRange>(sequence)),
-                    end(std::forward<ForwardRange>(sequence))
+                    begin(std::forward<R>(sequence)),
+                    end(std::forward<R>(sequence))
                 );
         }
 
@@ -1093,8 +1073,8 @@ namespace textum
                 `begin()[i] == mapped_value`), а `b` — булево значение, истинное, если вставилось
                 новое значение, и ложное, если состояние уже было помечено ранее.
         */
-        template <typename M, typename =
-            std::enable_if_t<std::is_convertible_v<remove_cvref_t<M>, mapped_type>>>
+        template <typename M>
+            requires(std::convertible_to<std::remove_cvref_t<M>, mapped_type>)
         auto attach_value (state_index_type state, M && mapped_value)
             -> std::pair<value_container_difference_type, bool>
         {

@@ -2,7 +2,6 @@
 
 #include <textum/aho_corasick_state_attribute.hpp>
 #include <textum/basic_trie.hpp>
-#include <textum/type_traits/iterator_value.hpp>
 
 #include <cassert>
 #include <cstdint>
@@ -72,9 +71,9 @@ namespace textum
                 из элементов, приводимых к типу `symbol_type`, а `метка` — это некое значение,
                 ассоциированное с данной последовательностью, приводимое к типу `mapped_type`.
         */
-        template <typename InputRange>
-        explicit aho_corasick (InputRange && marked_sequences):
-            trie_type(std::forward<InputRange>(marked_sequences))
+        template <std::ranges::input_range R>
+        explicit aho_corasick (R && marked_sequences):
+            trie_type(std::forward<R>(marked_sequences))
         {
             build_suffix_links();
         }
@@ -104,10 +103,15 @@ namespace textum
             \returns
                 Итератор за последним записанным результатом.
         */
-        template <typename InputIterator, typename Sentinel, typename OutputIterator, typename =
-            std::enable_if_t<std::is_convertible_v<iterator_value_t<InputIterator>, symbol_type>>>
-        auto match (InputIterator first, Sentinel last, OutputIterator result) const
-            -> OutputIterator
+        template
+        <
+            std::input_iterator I,
+            std::sentinel_for<I> S,
+            std::output_iterator<mapped_type> O
+        >
+            requires(std::convertible_to<std::iter_value_t<I>, symbol_type>)
+        auto match (I first, S last, O result) const
+            -> O
         {
             auto state = this->m_trie_automaton.root();
             while (first != last)
@@ -133,8 +137,8 @@ namespace textum
 
             \see match
         */
-        template <typename InputRange, typename OutputIterator>
-        OutputIterator match (const InputRange & sequence, OutputIterator result) const
+        template <std::ranges::input_range R, typename OutputIterator>
+        auto match (const R & sequence, OutputIterator result) const
         {
             using std::begin;
             using std::end;
@@ -267,8 +271,8 @@ namespace textum
                 Состояние, которого удалось достигнуть из исходного состояния `source` или одной
                 из его суффиксных ссылок, либо корень автомата, если переход так и не был найден.
         */
-        template <typename S, typename =
-            std::enable_if_t<std::is_convertible_v<S, symbol_type>>>
+        template <typename S>
+            requires(std::convertible_to<S, symbol_type>)
         auto next (state_index_type source, const S & symbol) const
             -> std::pair<state_index_type, bool>
         {

@@ -93,8 +93,8 @@ namespace textum
                 переход в том случае, если он был найден, либо `source` в случае, если переход не
                 был найден (иначе говоря, если переход не найден, то остаёмся на месте).
         */
-        template <typename S, typename =
-            std::enable_if_t<std::is_convertible_v<S, symbol_type>>>
+        template <typename S>
+            requires(std::convertible_to<S, symbol_type>)
         auto next (state_index_type source, const S & symbol) const
             -> std::pair<state_index_type, bool>
         {
@@ -133,8 +133,8 @@ namespace textum
                 переходы построены не будет, а возвращено будет то состояние, куда вёл уже
                 существующий переход.
         */
-        template <typename S, typename =
-            std::enable_if_t<std::is_convertible_v<S, symbol_type>>>
+        template <typename S>
+            requires(std::convertible_to<S, symbol_type>)
         auto add_transition (state_index_type source, S && symbol)
             -> std::pair<state_index_type, bool>
         {
